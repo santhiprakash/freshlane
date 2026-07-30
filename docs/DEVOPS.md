@@ -4,7 +4,7 @@
 | Service | Purpose | URL |
 |---------|---------|-----|
 | Vercel | Frontend (Next.js) | https://supermarket-neon.vercel.app |
-| GitHub | Source control | https://github.com/santhiprakash/supermarket |
+| GitHub | Source control | https://github.com/santhiprakash/freshlane |
 
 ## Deploy
 ```bash
