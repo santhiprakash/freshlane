@@ -35,11 +35,42 @@ export interface CartItem {
   quantity: number;
 }
 
+export type OrderStatus = "pending" | "confirmed" | "ready" | "delivered";
+export type DeliveryType = "delivery" | "collect";
+
+export interface OrderCustomer {
+  name: string;
+  phone: string;
+  pincode?: string;
+  address?: string;
+}
+
 export interface Order {
   id: string;
   date: string;
-  status: "pending" | "confirmed" | "ready" | "delivered";
+  status: OrderStatus;
   total: number;
+  subtotal: number;
+  deliveryFee: number;
+  discount: number;
   items: CartItem[];
-  deliveryType: "delivery" | "collect";
+  deliveryType: DeliveryType;
+  customer: OrderCustomer;
+  couponCode?: string;
+}
+
+export interface SavedAddress {
+  id: string;
+  label: string;
+  name: string;
+  phone: string;
+  pincode: string;
+  address: string;
+}
+
+export interface AccountProfile {
+  displayName: string;
+  email: string;
+  phone: string;
+  addresses: SavedAddress[];
 }

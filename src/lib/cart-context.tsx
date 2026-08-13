@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { CartItem, Product } from "@/lib/types";
 import { getEffectivePrice } from "@/lib/format";
+import { useBrowserHydrated } from "@/lib/use-browser-hydrated";
 
 interface CartContextValue {
   items: CartItem[];
@@ -26,22 +27,25 @@ const STORAGE_KEY = "freshlane-cart";
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [hydrated, setHydrated] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const hydrated = useBrowserHydrated();
 
-  useEffect(() => {
+  if (hydrated && !loaded) {
+    let next: CartItem[] = [];
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setItems(JSON.parse(stored));
+      if (stored) next = JSON.parse(stored) as CartItem[];
     } catch {
       /* ignore corrupt storage */
     }
-    setHydrated(true);
-  }, []);
+    setItems(next);
+    setLoaded(true);
+  }
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!loaded) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items, hydrated]);
+  }, [items, loaded]);
 
   const addItem = useCallback((product: Product, quantity = 1) => {
     setItems((prev) => {
