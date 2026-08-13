@@ -6,10 +6,10 @@ Digital storefront for a local neighborhood supermarket — browse, order online
 ## Stack (MVP)
 | Layer | Choice | Notes |
 |-------|--------|-------|
-| Frontend | Next.js 15, TypeScript, Tailwind CSS | App Router, server + client components |
-| State | React Context + localStorage | Cart persistence until API is wired |
+| Frontend | Next.js 16, TypeScript, Tailwind CSS | App Router, server + client components |
+| State | React Context + localStorage | Cart, orders, and guest profile until API is wired |
 | Data (MVP) | Mock JSON in `src/data/` | Swap for Postgres/API in Phase 2 |
-| Auth (MVP) | UI shells only | Supabase Auth planned for Phase 2 |
+| Auth (MVP) | Local guest profile | No password/server login; Supabase Auth planned for Phase 2 |
 | Deploy | Vercel | Preview + production |
 | DB (future) | PostgreSQL via Neon/Supabase | See `docs/DATABASE.md` |
 
@@ -18,14 +18,14 @@ Digital storefront for a local neighborhood supermarket — browse, order online
 app/                  # Next.js App Router pages
 src/components/       # UI components
 src/data/             # Mock products, categories, offers
-src/lib/              # Utilities, cart context
+src/lib/              # Utilities, cart / order / account stores
 docs/                 # Product & technical specifications
 ```
 
 ## MVP Pages (from `docs/SITEMAP.md`)
 - Home, Products, Categories, Offers, About, Contact
-- Account, Cart, Checkout, Orders
-- Admin dashboard (products, orders, inventory shells)
+- Account (guest profile + saved addresses), Cart, Checkout, Orders, Order detail
+- Admin dashboard (live local orders, inventory, offer counts)
 
 ## Design Direction
 - **Brand**: FreshLane — neighborhood fresh market

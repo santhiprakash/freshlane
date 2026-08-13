@@ -13,12 +13,12 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). No API keys required for the MVP (mock product data).
+Open [http://localhost:3000](http://localhost:3000). No API keys required for the MVP (mock product data). Walk the add-to-cart → checkout → orders → admin loop in [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md).
 
 ## MVP Pages
 
-- **Customer:** Home, Products, Categories, Offers, About, Contact, Cart, Checkout, Account, Orders
-- **Admin:** Dashboard shell at `/admin`
+- **Customer:** Home, Products, Categories, Offers, About, Contact, Cart, Checkout, Account, Orders, Order detail
+- **Admin:** Dashboard at `/admin` — today’s orders, catalog stats, recent orders, and status updates (localStorage)
 
 ## Stack
 
@@ -28,6 +28,7 @@ Next.js 16 · TypeScript · Tailwind CSS · Mock data (Phase 2: Postgres + API)
 
 | Doc | Purpose |
 |-----|---------|
+| [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | Clone, run, and walk the shopper loop |
 | [PLANNING.md](PLANNING.md) | Architecture, stack, design direction |
 | [PROGRESS.md](PROGRESS.md) | Maintainer's working log and decisions |
 | [CHANGELOG.md](CHANGELOG.md) | Versioned release notes |

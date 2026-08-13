@@ -13,6 +13,14 @@ See [PROGRESS.md](PROGRESS.md) for the maintainer's day-to-day working log and d
 - Open source release under MIT license
 - `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `.github/CODEOWNERS`
 - Issue and pull request templates
+- Checkout persists orders to `localStorage`; `/orders` and `/orders/[id]` show real orders
+- Admin dashboard reads local orders and can update status
+- Guest account profile and saved addresses (browser-only)
+- `docs/GETTING_STARTED.md`
+
+### Fixed
+- Checkout coupon Apply now validates offers (`FRESH15`, `WELCOME100`, expired/invalid codes)
+- Checkout no longer auto-redirects away before the order id is visible
 
 ## [0.1.0] - 2026-07-12
 ### Added

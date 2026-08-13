@@ -1,5 +1,24 @@
 # Progress Log
 
+## 2026-08-13 — Working storefront loop
+
+### Done
+- Checkout now persists a real order to `localStorage` (`freshlane-orders`) instead of only clearing the cart
+- Controlled checkout fields (name, phone, address, coupon); Click & Collect requires name + phone only
+- Coupons look up `src/data/offers.ts`: `FRESH15` (15% off), `WELCOME100` (₹100 off at ₹500+), expired/invalid codes fail with a message
+- `/orders` reads the store (empty state if none); `/orders/[id]` shows line items, totals, customer, status
+- Admin dashboard stats and recent-orders table come from real local orders + catalog; status can be advanced and is persisted
+- Guest account (`freshlane-account`) with display name, email, phone, saved addresses; checkout prefills the latest address
+- Added `docs/GETTING_STARTED.md` for clone → shop → order → admin
+
+### Still deferred (Phase 2)
+- Postgres / API, Razorpay, real auth, email, inventory decrement, product search
+
+### Decisions
+- Stay on mock JSON + `localStorage`, matching the existing cart pattern
+- No password login against a server — guest profile is labeled as local demo data
+- Do not auto-redirect away from checkout success so the shopper can read the order id
+
 ## 2026-07-30 — Open-source rename
 
 ### Done

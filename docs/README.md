@@ -2,6 +2,8 @@
 
 Product and technical specifications for the MVP supermarket website.
 
+Start here: [GETTING_STARTED.md](./GETTING_STARTED.md) — clone, run, and walk the shopper loop.
+
 ## Product
 
 | Document | Description |

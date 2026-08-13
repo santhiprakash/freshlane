@@ -1,26 +1,47 @@
-import type { Metadata } from "next";
-import { products } from "@/data/products";
-import { formatPrice, getEffectivePrice } from "@/lib/format";
+"use client";
+
+import Link from "next/link";
 import { Package, Boxes, BarChart3, Tag } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "Admin Dashboard",
-};
-
-const stats = [
-  { label: "Today's Orders", value: "24", icon: Package },
-  { label: "Products", value: String(products.length), icon: Boxes },
-  { label: "Low Stock", value: "3", icon: BarChart3 },
-  { label: "Active Offers", value: "4", icon: Tag },
-];
+import { products } from "@/data/products";
+import { offers } from "@/data/offers";
+import { formatPrice, getEffectivePrice } from "@/lib/format";
+import { isOfferActive } from "@/lib/coupons";
+import { isSameLocalDay } from "@/lib/order-store";
+import { useOrders } from "@/lib/order-context";
+import { formatOrderDate, ORDER_STATUSES, statusLabels } from "@/lib/order-status";
+import { EmptyState } from "@/components/ui/empty-state";
+import type { OrderStatus } from "@/lib/types";
 
 export default function AdminPage() {
+  const { orders, hydrated, updateOrderStatus } = useOrders();
   const lowStock = products.filter((p) => !p.inStock);
+  const activeOffers = offers.filter((offer) => isOfferActive(offer));
+  const todaysOrders = orders.filter((order) => isSameLocalDay(order.date));
+  const pendingCount = orders.filter((order) => order.status === "pending").length;
+
+  const stats = [
+    {
+      label: "Today's Orders",
+      value: hydrated ? String(todaysOrders.length) : "—",
+      icon: Package,
+    },
+    { label: "Products", value: String(products.length), icon: Boxes },
+    { label: "Low Stock", value: String(lowStock.length), icon: BarChart3 },
+    {
+      label: "Active Offers",
+      value: String(activeOffers.length),
+      icon: Tag,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <h1 className="font-display text-3xl font-semibold text-forest">Admin Dashboard</h1>
-      <p className="mt-1 text-forest/60">Store operations overview (MVP shell)</p>
+      <h1 className="font-display text-3xl font-semibold text-forest">
+        Admin Dashboard
+      </h1>
+      <p className="mt-1 text-forest/60">
+        Store operations for this browser — orders stay in local storage
+      </p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
@@ -36,6 +57,82 @@ export default function AdminPage() {
           </div>
         ))}
       </div>
+
+      <section className="mt-8 rounded-2xl border border-sage/50 bg-white p-6 shadow-sm">
+        <h2 className="font-display text-lg font-semibold text-forest">
+          Recent Orders
+        </h2>
+        {!hydrated ? (
+          <p className="mt-4 text-sm text-forest/50">Loading orders…</p>
+        ) : orders.length === 0 ? (
+          <EmptyState
+            icon={<Package className="h-12 w-12" aria-hidden />}
+            title="No orders yet"
+            description="Orders placed from checkout will appear here so you can update their status."
+          />
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-sage/50 text-left text-forest/60">
+                  <th className="pb-2 font-medium">Order</th>
+                  <th className="pb-2 font-medium">Date</th>
+                  <th className="pb-2 font-medium">Type</th>
+                  <th className="pb-2 font-medium">Total</th>
+                  <th className="pb-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((order) => (
+                  <tr key={order.id} className="border-b border-sage/30">
+                    <td className="py-2.5">
+                      <Link
+                        href={`/orders/${order.id}`}
+                        className="font-medium text-forest hover:underline"
+                      >
+                        {order.id}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 text-forest/80">
+                      {formatOrderDate(order.date)}
+                    </td>
+                    <td className="py-2.5 text-forest/80">
+                      {order.deliveryType === "collect"
+                        ? "Collect"
+                        : "Delivery"}
+                    </td>
+                    <td className="py-2.5 font-medium">
+                      {formatPrice(order.total)}
+                    </td>
+                    <td className="py-2.5">
+                      <label className="sr-only" htmlFor={`status-${order.id}`}>
+                        Status for {order.id}
+                      </label>
+                      <select
+                        id={`status-${order.id}`}
+                        value={order.status}
+                        onChange={(e) =>
+                          updateOrderStatus(
+                            order.id,
+                            e.target.value as OrderStatus
+                          )
+                        }
+                        className="rounded-lg border border-sage/50 bg-white px-2 py-1 text-forest focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                      >
+                        {ORDER_STATUSES.map((status) => (
+                          <option key={status} value={status}>
+                            {statusLabels[status].label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         <section className="rounded-2xl border border-sage/50 bg-white p-6">
@@ -75,9 +172,7 @@ export default function AdminPage() {
         </section>
 
         <section className="rounded-2xl border border-sage/50 bg-white p-6">
-          <h2 className="font-display text-lg font-semibold text-forest">
-            Alerts
-          </h2>
+          <h2 className="font-display text-lg font-semibold text-forest">Alerts</h2>
           <ul className="mt-4 space-y-3">
             {lowStock.map((p) => (
               <li
@@ -88,12 +183,17 @@ export default function AdminPage() {
                 <span className="font-medium text-terracotta">Restock needed</span>
               </li>
             ))}
-            <li className="rounded-lg bg-sage/20 px-3 py-2 text-sm text-forest">
-              24 orders pending processing today
-            </li>
-            <li className="rounded-lg bg-sage/20 px-3 py-2 text-sm text-forest">
-              Weekend Fresh Deal (FRESH15) active
-            </li>
+            {hydrated && pendingCount > 0 && (
+              <li className="rounded-lg bg-sage/20 px-3 py-2 text-sm text-forest">
+                {pendingCount}{" "}
+                {pendingCount === 1 ? "order is" : "orders are"} pending
+              </li>
+            )}
+            {hydrated && lowStock.length === 0 && pendingCount === 0 && (
+              <li className="rounded-lg bg-sage/20 px-3 py-2 text-sm text-forest">
+                No alerts right now
+              </li>
+            )}
           </ul>
         </section>
       </div>

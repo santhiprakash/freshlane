@@ -1,21 +1,137 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Truck, Store, CheckCircle } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
-import { formatPrice } from "@/lib/format";
+import { useOrders } from "@/lib/order-context";
+import { useAccount } from "@/lib/account-context";
+import { getDefaultAddress } from "@/lib/account-store";
+import { applyCoupon, calcDeliveryFee } from "@/lib/coupons";
+import { formatPrice, getEffectivePrice } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import type { DeliveryType, Order } from "@/lib/types";
+
+const inputClass =
+  "w-full rounded-lg border border-sage/50 px-3 py-2 text-forest placeholder:text-forest/40 focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20";
 
 export default function CheckoutPage() {
   const { items, subtotal, clearCart } = useCart();
-  const router = useRouter();
-  const [deliveryType, setDeliveryType] = useState<"delivery" | "collect">("delivery");
-  const [placed, setPlaced] = useState(false);
+  const { placeOrder } = useOrders();
+  const { profile, hydrated: accountHydrated } = useAccount();
 
-  const deliveryFee = deliveryType === "collect" ? 0 : subtotal > 500 ? 0 : 40;
-  const total = subtotal + deliveryFee;
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>("delivery");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [pincode, setPincode] = useState("");
+  const [address, setAddress] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCode, setAppliedCode] = useState<string | undefined>();
+  const [discount, setDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [formError, setFormError] = useState("");
+  const [placed, setPlaced] = useState<Order | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
+
+  if (accountHydrated && !prefilled) {
+    setPrefilled(true);
+    if (profile) {
+      const last = getDefaultAddress(profile);
+      if (last) {
+        setSelectedAddressId(last.id);
+        setName(last.name || profile.displayName);
+        setPhone(last.phone || profile.phone);
+        setPincode(last.pincode);
+        setAddress(last.address);
+      } else {
+        setName((prev) => prev || profile.displayName);
+        setPhone((prev) => prev || profile.phone);
+      }
+    }
+  }
+
+  const deliveryFee = calcDeliveryFee(deliveryType, subtotal);
+  const total = Math.max(0, subtotal - discount) + deliveryFee;
+
+  const savedAddresses = profile?.addresses ?? [];
+
+  const applyAddress = (id: string) => {
+    setSelectedAddressId(id);
+    const match = savedAddresses.find((addr) => addr.id === id);
+    if (!match) return;
+    setName(match.name);
+    setPhone(match.phone);
+    setPincode(match.pincode);
+    setAddress(match.address);
+  };
+
+  const handleApplyCoupon = () => {
+    const result = applyCoupon(couponInput, subtotal, items);
+    if (!result.ok) {
+      setAppliedCode(undefined);
+      setDiscount(0);
+      setCouponMessage({ type: "error", text: result.message });
+      return;
+    }
+    setAppliedCode(result.code);
+    setDiscount(result.discount);
+    setCouponMessage({ type: "success", text: result.message });
+  };
+
+  const validate = () => {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    if (!trimmedName) return "Please enter your name.";
+    if (!trimmedPhone) return "Please enter your phone number.";
+    const digits = trimmedPhone.replace(/\D/g, "");
+    if (digits.length < 10) return "Enter a valid 10-digit phone number.";
+    if (deliveryType === "delivery") {
+      if (!pincode.trim()) return "Please enter your pincode.";
+      if (!address.trim()) return "Please enter your delivery address.";
+    }
+    return "";
+  };
+
+  const handlePlaceOrder = (e: React.FormEvent) => {
+    e.preventDefault();
+    const error = validate();
+    if (error) {
+      setFormError(error);
+      return;
+    }
+    setFormError("");
+    const order = placeOrder({
+      items,
+      deliveryType,
+      customer: {
+        name: name.trim(),
+        phone: phone.trim(),
+        pincode: deliveryType === "delivery" ? pincode.trim() : undefined,
+        address: deliveryType === "delivery" ? address.trim() : undefined,
+      },
+      subtotal,
+      deliveryFee,
+      discount,
+      couponCode: appliedCode,
+    });
+    clearCart();
+    setPlaced(order);
+  };
+
+  const itemLines = useMemo(
+    () =>
+      items.map(({ product, quantity }) => ({
+        id: product.id,
+        name: product.name,
+        quantity,
+        lineTotal: getEffectivePrice(product) * quantity,
+      })),
+    [items]
+  );
 
   if (items.length === 0 && !placed) {
     return (
@@ -36,10 +152,17 @@ export default function CheckoutPage() {
           Order Placed!
         </h1>
         <p className="mt-2 text-forest/60">
-          Thank you for shopping at FreshLane. Your order confirmation has been sent.
+          Thank you for shopping at FreshLane. Your order is saved in this
+          browser.
+        </p>
+        <p className="mt-4 font-display text-xl font-semibold text-forest">
+          {placed.id}
+        </p>
+        <p className="mt-1 text-sm text-forest/50">
+          Save this order number to track it later.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Link href="/orders">
+          <Link href={`/orders/${placed.id}`}>
             <Button variant="secondary">Track Order</Button>
           </Link>
           <Link href="/products">
@@ -49,13 +172,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  const handlePlaceOrder = (e: React.FormEvent) => {
-    e.preventDefault();
-    clearCart();
-    setPlaced(true);
-    setTimeout(() => router.push("/orders"), 3000);
-  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -117,33 +233,69 @@ export default function CheckoutPage() {
             </div>
           </section>
 
+          <section className="rounded-2xl border border-sage/50 bg-white p-6">
+            <h2 className="font-display text-lg font-semibold text-forest">
+              Contact
+            </h2>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <input
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Full name"
+                autoComplete="name"
+                className={`${inputClass} sm:col-span-2`}
+              />
+              <input
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone number"
+                type="tel"
+                autoComplete="tel"
+                className={`${inputClass} sm:col-span-2`}
+              />
+            </div>
+          </section>
+
           {deliveryType === "delivery" && (
             <section className="rounded-2xl border border-sage/50 bg-white p-6">
               <h2 className="font-display text-lg font-semibold text-forest">
                 Delivery Address
               </h2>
+              {savedAddresses.length > 0 && (
+                <label className="mt-4 block text-sm text-forest/70">
+                  Use a saved address
+                  <select
+                    value={selectedAddressId}
+                    onChange={(e) => applyAddress(e.target.value)}
+                    className={`${inputClass} mt-1`}
+                  >
+                    {savedAddresses.map((addr) => (
+                      <option key={addr.id} value={addr.id}>
+                        {addr.label} — {addr.pincode}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <input
                   required
-                  placeholder="Full name"
-                  className="rounded-lg border border-sage/50 px-3 py-2 text-forest focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20 sm:col-span-2"
-                />
-                <input
-                  required
-                  placeholder="Phone number"
-                  type="tel"
-                  className="rounded-lg border border-sage/50 px-3 py-2 text-forest focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
-                />
-                <input
-                  required
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
                   placeholder="Pincode"
-                  className="rounded-lg border border-sage/50 px-3 py-2 text-forest focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                  autoComplete="postal-code"
+                  className={inputClass}
                 />
                 <textarea
                   required
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
                   placeholder="Full address"
                   rows={3}
-                  className="rounded-lg border border-sage/50 px-3 py-2 text-forest focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20 sm:col-span-2"
+                  autoComplete="street-address"
+                  className={`${inputClass} sm:col-span-2`}
                 />
               </div>
             </section>
@@ -155,26 +307,41 @@ export default function CheckoutPage() {
             </h2>
             <div className="mt-3 flex gap-2">
               <input
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
                 placeholder="Enter code (e.g. FRESH15)"
-                className="flex-1 rounded-lg border border-sage/50 px-3 py-2 text-forest focus:border-forest focus:outline-none focus:ring-2 focus:ring-forest/20"
+                className={inputClass}
+                aria-label="Coupon code"
               />
-              <Button type="button" variant="outline">
+              <Button type="button" variant="outline" onClick={handleApplyCoupon}>
                 Apply
               </Button>
             </div>
+            {couponMessage && (
+              <p
+                className={`mt-2 text-sm ${
+                  couponMessage.type === "error"
+                    ? "text-terracotta"
+                    : "text-forest-light"
+                }`}
+                role="status"
+              >
+                {couponMessage.text}
+              </p>
+            )}
           </section>
         </div>
 
         <div className="h-fit rounded-2xl border border-sage/50 bg-white p-6 shadow-sm">
           <h2 className="font-display text-lg font-semibold text-forest">Summary</h2>
           <ul className="mt-4 space-y-2 text-sm">
-            {items.map(({ product, quantity }) => (
-              <li key={product.id} className="flex justify-between text-forest/80">
+            {itemLines.map((line) => (
+              <li key={line.id} className="flex justify-between text-forest/80">
                 <span className="truncate pr-2">
-                  {product.name} × {quantity}
+                  {line.name} × {line.quantity}
                 </span>
                 <span className="shrink-0 font-medium">
-                  {formatPrice((product.offerPrice ?? product.price) * quantity)}
+                  {formatPrice(line.lineTotal)}
                 </span>
               </li>
             ))}
@@ -184,6 +351,12 @@ export default function CheckoutPage() {
               <dt className="text-forest/60">Subtotal</dt>
               <dd>{formatPrice(subtotal)}</dd>
             </div>
+            {discount > 0 && (
+              <div className="flex justify-between">
+                <dt className="text-forest/60">Discount ({appliedCode})</dt>
+                <dd className="text-forest-light">−{formatPrice(discount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between">
               <dt className="text-forest/60">
                 {deliveryType === "collect" ? "Pickup" : "Delivery"}
@@ -195,6 +368,11 @@ export default function CheckoutPage() {
               <dd>{formatPrice(total)}</dd>
             </div>
           </dl>
+          {formError && (
+            <p className="mt-4 text-sm text-terracotta" role="alert">
+              {formError}
+            </p>
+          )}
           <Button type="submit" size="lg" className="mt-6 w-full">
             Place Order
           </Button>
@@ -210,7 +388,7 @@ export default function CheckoutPage() {
             .
           </p>
           <p className="mt-1 text-center text-xs text-forest/50">
-            Payment integration coming in Phase 2
+            Payment is cash on delivery / collect for this demo
           </p>
         </div>
       </form>
