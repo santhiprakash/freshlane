@@ -29,8 +29,10 @@ Next.js 16 · TypeScript · Tailwind CSS · Mock data (Phase 2: Postgres + API)
 | Doc | Purpose |
 |-----|---------|
 | [PLANNING.md](PLANNING.md) | Architecture, stack, design direction |
-| [PROGRESS.md](PROGRESS.md) | Change log and decisions |
+| [PROGRESS.md](PROGRESS.md) | Maintainer's working log and decisions |
+| [CHANGELOG.md](CHANGELOG.md) | Versioned release notes |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Community expectations |
 | [SECURITY.md](SECURITY.md) | Vulnerability reporting |
 | [docs/DEVOPS.md](docs/DEVOPS.md) | Deploy, env vars, hosting |
 | [docs/](docs/README.md) | Product & technical specs |
